@@ -320,6 +320,8 @@ def reset_game():
     all_sprites.add(player)
 
     fish_total = len(fish_group)
+    global score
+    score = 0
 
 reset_game()
 
@@ -345,13 +347,14 @@ while True:
             elif isinstance(enemy, Ghost):
                 enemy.update(player)
 
-        for enemy in enemies.copy():
+        for enemy in enemies.copy(): # score
             if player.rect.colliderect(enemy.rect):
                 if isinstance(enemy, Dog):
                     if player.dy > 0 and player.rect.bottom - enemy.rect.top < TILE_SIZE // 2:
                         enemies.remove(enemy)
                         all_sprites.remove(enemy)
                         player.dy = JUMP_POWER // 2
+                        score += 10  # 犬を踏みつけたらスコア+10
                     else:
                         game_state = "gameover"
                 else:
@@ -393,6 +396,8 @@ while True:
 
         fish_txt = font.render(f"魚: {player.fish}/{fish_total}", True, (0,0,0))
         screen.blit(fish_txt, (10, 10))
+        score_txt = font.render(f"スコア: {score}", True, (0,0,0)) # score表示
+        screen.blit(score_txt, (10, 40))
 
         if game_state == "gameover":
             txt = font.render("GAME OVER", True, (255,0,0))
