@@ -1,7 +1,6 @@
 import pygame
 import os
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
 TILE_SIZE = 32
 GRAVITY = 1
@@ -12,8 +11,7 @@ DOG_SPEED = -2
 FISH_SIZE = 24
 MAP_WIDTH = 40
 MAP_HEIGHT = 15
-ASSET_DIR = "images"
-INVINCIBLE_TIME = 200 # 無敵時間（フレーム数：60fpsで約5秒）（無敵）
+ASSET_DIR = os.path.join(os.path.dirname(__file__), "images")
 
 def load_img(name, size=None):
     path = os.path.join(ASSET_DIR, name)
@@ -96,12 +94,6 @@ def get_map():
             MAP[-13][x] = 2
         elif x == 30:
             MAP[-13][x] = 3
-        elif x == 5:
-            MAP[-3][x] = 7
-        elif x == 20:
-            MAP[-5][x] = 7  # スター配置（無敵）
-        elif x == 35:
-            MAP[-14][31] = 7  # スター配置（無敵）
     for x in range(MAP_WIDTH):
         if x == 0:
             MAP[-2][x] = 5
@@ -132,9 +124,7 @@ def get_map():
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.original_img = load_img("あるく.png", (TILE_SIZE, TILE_SIZE))
-        self.jump_img = load_img("ジャンプ.png", (TILE_SIZE, TILE_SIZE))
-        self.invincible_img = load_img("最強こうかとん.png", (TILE_SIZE, TILE_SIZE))  # 無敵画像の読み込み（無敵）
+        self.original_img = load_img("neko.png", (TILE_SIZE, TILE_SIZE))
         self.image = self.original_img
         self.rect = self.image.get_rect(topleft=(x, y))
         self.dx = 0
@@ -142,7 +132,6 @@ class Player(pygame.sprite.Sprite):
         self.on_ground = False
         self.fish = 0
         self.facing_right = True
-        self.invincibility_timer = 0  # 無敵タイマーの初期化（無敵）
 
     def update(self, keys, map_rects):
         self.dx = 0
@@ -182,16 +171,6 @@ class Player(pygame.sprite.Sprite):
             self.rect.left = 0
         if self.rect.right > MAP_WIDTH * TILE_SIZE:
             self.rect.right = MAP_WIDTH * TILE_SIZE
-        if self.invincibility_timer > 0:  # 無敵タイマーのカウントダウン（無敵）
-            self.invincibility_timer -= 1  # 無敵タイマーをデクリメント(無敵)
-        if self.invincibility_timer > 0:  # 無敵中の画像切り替え（無敵）
-            self.image = self.invincible_img if self.facing_right else pygame.transform.flip(self.invincible_img, True, False)  # 無敵画像に切り替え（無敵）
-        else:
-            # ジャンプ中の画像切り替え
-            if self.dy < 0:
-                self.image = self.jump_img if self.facing_right else pygame.transform.flip(self.jump_img, True, False)
-            else:
-                self.image = self.original_img if self.facing_right else pygame.transform.flip(self.original_img, True, False)
 
 class Dog(pygame.sprite.Sprite):
     def __init__(self, x, y):
@@ -274,21 +253,6 @@ class Fish(pygame.sprite.Sprite):
         self.image = load_img("fish.png", (FISH_SIZE, FISH_SIZE))
         self.rect = self.image.get_rect(center=(x + TILE_SIZE // 2, y + TILE_SIZE // 2))
 
-class Star(pygame.sprite.Sprite):  # スタークラス（無敵）
-    """
-    Star の Docstring
-    スターアイテムを表すクラスです。プレイヤーがこのアイテムに触れると一定時間無敵になります。
-    Attributes:
-        image (pygame.Surface): スターの画像。
-        rect (pygame.Rect): スターの位置とサイズを表す矩形。
-    Methods:
-        __init__(self, x, y): スターオブジェクトを初期化します。
-    """
-    def __init__(self, x, y):
-        super().__init__()
-        self.image = load_img("スター.png", (TILE_SIZE, TILE_SIZE))  # スター画像の読み込み（無敵）
-        self.rect = self.image.get_rect(topleft=(x, y))  # スターの位置設定（無敵）
-
 class Goal(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
@@ -314,7 +278,7 @@ font = pygame.font.Font("C:/Windows/Fonts/msgothic.ttc", 32)
 game_state: str = "title"
 
 def reset_game():
-    global all_sprites, enemies, fish_group, star_group, player, fish_total, map_rects, goal_rect, MAP, MAP_WIDTH, MAP_HEIGHT
+    global all_sprites, enemies, fish_group, player, fish_total, map_rects, goal_rect, MAP, MAP_WIDTH, MAP_HEIGHT
 
     MAP = get_map()
     MAP_WIDTH = len(MAP[0])
@@ -323,7 +287,6 @@ def reset_game():
     all_sprites = pygame.sprite.Group()
     enemies = pygame.sprite.Group()
     fish_group = pygame.sprite.Group()
-    star_group = pygame.sprite.Group()  # スターグループの初期化（無敵）
     map_rects = []
     goal_rect = None
 
@@ -351,10 +314,6 @@ def reset_game():
             elif v == 6:
                 image = Image.serihu(px, py)
                 all_sprites.add(image)
-            elif v == 7:  # スターの配置（無敵）
-                star = Star(px, py)
-                all_sprites.add(star)
-                star_group.add(star)
 
     player_start_y = (MAP_HEIGHT - 3) * TILE_SIZE
     player = Player(32, player_start_y)
@@ -370,7 +329,7 @@ while True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             exit()
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:  # ESCで一時停止／再開（吉留)（一時停止）
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:  # ESCで一時停止／再開
             if game_state == "playing":
                 game_state = "pause"
             elif game_state == "pause":
@@ -394,26 +353,18 @@ while True:
 
         for enemy in enemies.copy():
             if player.rect.colliderect(enemy.rect):
-                if player.invincibility_timer > 0:  # 0の場合敵を削除、そうでない場合は消せない（無敵）
-                    enemies.remove(enemy)  # 無敵中なら敵を消す(無敵)
-                    all_sprites.remove(enemy)
-                else:
-                    if isinstance(enemy, Dog):
-                        if player.dy > 0 and player.rect.bottom - enemy.rect.top < TILE_SIZE // 2:
-                            enemies.remove(enemy)
-                            all_sprites.remove(enemy)
-                            player.dy = JUMP_POWER // 2
-                        else:
-                            game_state = "gameover"
+                if isinstance(enemy, Dog):
+                    if player.dy > 0 and player.rect.bottom - enemy.rect.top < TILE_SIZE // 2:
+                        enemies.remove(enemy)
+                        all_sprites.remove(enemy)
+                        player.dy = JUMP_POWER // 2
                     else:
                         game_state = "gameover"
+                else:
+                    game_state = "gameover"
 
         got_fish = pygame.sprite.spritecollide(player, fish_group, True)
         player.fish += len(got_fish)
-
-        got_star = pygame.sprite.spritecollide(player, star_group, True)  # スタートの接触（タイマーの起動）「メインループ内の衝突判定でプレイヤーがスターに触れるタイマーがセット）（無敵）
-        if got_star:
-            player.invincibility_timer = INVINCIBLE_TIME
 
         if 'goal_rect' in locals() and player.rect.colliderect(goal_rect):
             if player.fish >= fish_total:
@@ -421,7 +372,6 @@ while True:
 
         if player.rect.top > SCREEN_HEIGHT:
             game_state = "gameover"
-    
 
     camera_x = 0
     if 'player' in locals():
@@ -460,7 +410,7 @@ while True:
             screen.blit(txt, (SCREEN_WIDTH//2 - txt.get_width()//2, 220))
             txt2 = font.render("スペースキーでタイトルへ", True, (0,0,0))
             screen.blit(txt2, (SCREEN_WIDTH//2 - txt2.get_width()//2, 260))
-        if game_state == "pause":  # 一時停止画面表示(吉留)（一時停止）
+        if game_state == "pause":
             pause_txt = font.render("PAUSE", True, (0, 0, 0))
             info_txt = font.render("ESCで再開", True, (0, 0, 0))
 
