@@ -119,6 +119,7 @@ def get_map() -> List[List[int]]:
         MAP[-8][x] = 7
     return MAP
 
+
 class Player(pygame.sprite.Sprite):
     """[ADD] プレイヤーキャラクターを管理するクラス"""
     def __init__(self, x: int, y: int):
@@ -236,6 +237,7 @@ class Player(pygame.sprite.Sprite):
                 self.image = self.jump_img if self.facing_right else pygame.transform.flip(self.jump_img, True, False)
             else:
                 self.image = self.original_img if self.facing_right else pygame.transform.flip(self.original_img, True, False)
+
 
 class Dog(pygame.sprite.Sprite):
     """地上を往復する敵クラス"""
@@ -363,37 +365,14 @@ class MovingPlatform(pygame.sprite.Sprite):
                 self.vy *= -1
                 self.rect.y = max(self.base_y - self.range, min(self.rect.y, self.base_y + self.range))
 
-class MovingPlatform(pygame.sprite.Sprite):
-    def __init__(self, x, y, vx=PLATFORM_SPEED, range_pixels=PLATFORM_RANGE, vertical=False):
-        super().__init__()
-        self.image = load_img("platform.png", (TILE_SIZE, TILE_SIZE))
-        self.rect = self.image.get_rect(topleft=(x, y))
-        self.base_x = x
-        self.base_y = y
-        self.vx = vx if not vertical else 0
-        self.vy = 0 if not vertical else vx
-        self.range = range_pixels
-        self.vertical = vertical
-
-    def update(self):
-        self.rect.x += self.vx
-        self.rect.y += self.vy
-        if not self.vertical:
-            if self.rect.x < self.base_x - self.range or self.rect.x > self.base_x + self.range:
-                self.vx *= -1
-                self.rect.x = max(self.base_x - self.range, min(self.rect.x, self.base_x + self.range))
-        else:
-            if self.rect.y < self.base_y - self.range or self.rect.y > self.base_y + self.range:
-                self.vy *= -1
-                self.rect.y = max(self.base_y - self.range, min(self.rect.y, self.base_y + self.range))
 
 pygame.init()
 pg.mixer.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Super Neko World")
+pygame.display.set_caption("Super Kokaton World")
 clock = pygame.time.Clock()
 font = pygame.font.Font("C:/Windows/Fonts/msgothic.ttc", 32)
-pg.mixer.music.load("sound/BGM.mp3")  # BGMロード
+pygame.mixer.music.load("sound/BGM.mp3")  # BGMロード
 
 game_state: str = "title"
 start_time = 0
@@ -548,7 +527,7 @@ while True:
         screen.fill((110, 190, 255))
 
     if game_state == "title":
-        txt1 = font.render("Super Neko World", True, (50, 50, 50))
+        txt1 = font.render("Super Kokaton World", True, (50, 50, 50))
         txt2 = font.render("スペースキーでスタート", True, (0,0,0))
         screen.blit(txt1, (SCREEN_WIDTH//2 - txt1.get_width()//2, 150))
         screen.blit(txt2, (SCREEN_WIDTH//2 - txt2.get_width()//2, 260))
@@ -598,4 +577,4 @@ while True:
 
 
     pygame.display.update()
-    clock.tick(40)
+    clock.tick(60)
