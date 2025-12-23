@@ -130,6 +130,8 @@ def get_map():
         elif x == 39:
             MAP[-2][x] = 4
             MAP[-15][x] = 4
+    for x in range(15, 18):
+        MAP[-8][x] = 7
     return MAP
 
 class Player(pygame.sprite.Sprite):
@@ -149,7 +151,7 @@ class Player(pygame.sprite.Sprite):
         self.max_jump = 1  # 最大ジャンプ回数
         self.invincibility_timer = 0  # 無敵時間
 
-    def update(self, keys, map_rects):
+    def update(self, keys, map_rects, platforms):
         self.dx = 0
         if keys[pygame.K_LEFT]:
             self.dx = -PLAYER_SPEED
@@ -166,6 +168,7 @@ class Player(pygame.sprite.Sprite):
         #     self.jump_count += 1  # ジャンプ回数を1増やす
         #     self.on_ground = False
         self.dy += GRAVITY
+        # 水平方向の移動と静的ブロックとの衝突
         self.rect.x += self.dx
         for block in map_rects:
             if self.rect.colliderect(block):
@@ -173,8 +176,17 @@ class Player(pygame.sprite.Sprite):
                     self.rect.right = block.left
                 if self.dx < 0:
                     self.rect.left = block.right
+        # 移動プラットフォームとの衝突（水平）
+        for platform in platforms:
+            if self.rect.colliderect(platform.rect):
+                if self.dx > 0:
+                    self.rect.right = platform.rect.left
+                if self.dx < 0:
+                    self.rect.left = platform.rect.right
+        # 垂直
         self.rect.y += self.dy
         self.on_ground = False
+        self.standing_on = None
         for block in map_rects:
             if self.rect.colliderect(block):
                 if self.dy > 0:
@@ -185,6 +197,42 @@ class Player(pygame.sprite.Sprite):
                 elif self.dy < 0:
                     self.rect.top = block.bottom
                     self.dy = 0
+        for platform in platforms:
+            if self.rect.colliderect(platform.rect):
+                # プレイヤーが落下中に乗る or リフトが上に押し上げてきた場合の処理
+                overlap = self.rect.bottom - platform.rect.top
+                if overlap > 0 and (self.dy >= 0 or getattr(platform, 'vy', 0) < 0):
+                    # 足がリフトの上にあると判断して乗せる
+                    self.rect.bottom = platform.rect.top
+                    self.dy = 0
+                    self.on_ground = True
+                    self.standing_on = platform
+                elif self.rect.top < platform.rect.bottom and self.dy < 0:
+                    # 頭をぶつけた
+                    self.rect.top = platform.rect.bottom
+                    self.dy = 0
+        # プラットフォームで運ぶ（垂直方向の移動をサポート）
+        if self.standing_on:
+            vx = getattr(self.standing_on, 'vx', 0)
+            vy = getattr(self.standing_on, 'vy', 0)
+            if vx:
+                self.rect.x += vx
+                for block in map_rects:
+                    if self.rect.colliderect(block):
+                        if vx > 0:
+                            self.rect.right = block.left
+                        elif vx < 0:
+                            self.rect.left = block.right
+            if vy:
+                self.rect.y += vy
+                for block in map_rects:
+                    if self.rect.colliderect(block):
+                        if vy > 0:
+                            self.rect.bottom = block.top
+                            self.on_ground = True
+                        elif vy < 0:
+                            self.rect.top = block.bottom
+                            self.dy = 0
         if self.rect.left < 0:
             self.rect.left = 0
         if self.rect.right > MAP_WIDTH * TILE_SIZE:
@@ -312,6 +360,30 @@ class Image(pygame.sprite.Sprite):
     def serihu(cls, x, y):
         return cls(x, y, "serihu.png")
 
+class MovingPlatform(pygame.sprite.Sprite):
+    def __init__(self, x, y, vx=PLATFORM_SPEED, range_pixels=PLATFORM_RANGE, vertical=False):
+        super().__init__()
+        self.image = load_img("platform.png", (TILE_SIZE, TILE_SIZE))
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.base_x = x
+        self.base_y = y
+        self.vx = vx if not vertical else 0
+        self.vy = 0 if not vertical else vx
+        self.range = range_pixels
+        self.vertical = vertical
+
+    def update(self):
+        self.rect.x += self.vx
+        self.rect.y += self.vy
+        if not self.vertical:
+            if self.rect.x < self.base_x - self.range or self.rect.x > self.base_x + self.range:
+                self.vx *= -1
+                self.rect.x = max(self.base_x - self.range, min(self.rect.x, self.base_x + self.range))
+        else:
+            if self.rect.y < self.base_y - self.range or self.rect.y > self.base_y + self.range:
+                self.vy *= -1
+                self.rect.y = max(self.base_y - self.range, min(self.rect.y, self.base_y + self.range))
+
 pygame.init()
 pg.mixer.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -364,6 +436,8 @@ def reset_game():
                 star = Star(px, py)
                 all_sprites.add(star)
                 star_group.add(star)
+                platform = MovingPlatform(px, py, vertical=True)
+                platforms.add(platform)
 
     player_start_y = (MAP_HEIGHT - 3) * TILE_SIZE
     player = Player(32, player_start_y)
@@ -411,7 +485,10 @@ while True:
 
 
     if game_state == "playing":
-        player.update(keys, map_rects)
+        # まず移動プラットフォームを更新
+        for p in platforms:
+            p.update()
+        player.update(keys, map_rects, platforms)
         for enemy in enemies:
             if isinstance(enemy, Dog):
                 enemy.update(map_rects, player)
@@ -501,4 +578,4 @@ while True:
 
 
     pygame.display.update()
-    clock.tick(60)
+    clock.tick(40)
