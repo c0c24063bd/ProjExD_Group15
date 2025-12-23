@@ -16,10 +16,9 @@ FISH_SIZE = 24
 MAP_WIDTH = 40
 MAP_HEIGHT = 15
 ASSET_DIR = "images"  # アセットディレクトリのパス
+INVINCIBLE_TIME = 200 # 無敵時間（フレーム数：60fpsで約5秒）（無敵）
 PLATFORM_RANGE = TILE_SIZE * 3
 PLATFORM_SPEED = 2
-INVINCIBLE_TIME = 200 # 無敵時間（フレーム数：60fpsで約5秒）（無敵）
-
 def load_img(name, size=None):
     path = os.path.join(ASSET_DIR, name)
     try:
@@ -102,11 +101,10 @@ def get_map():
         elif x == 30:
             MAP[-13][x] = 3
         elif x == 5:
-            MAP[-3][x] = 7
-        elif x == 20:
-            MAP[-5][x] = 7  # スター配置（無敵）
+            MAP[-3][x] = 8
+       
         elif x == 35:
-            MAP[-14][31] = 7  # スター配置（無敵）
+            MAP[-14][31] = 8  # スター配置（無敵）
     for x in range(MAP_WIDTH):
         if x == 0:
             MAP[-2][x] = 5
@@ -152,6 +150,7 @@ class Player(pygame.sprite.Sprite):
         self.jump_count = 0  # ジャンプ回数
         self.max_jump = 1  # 最大ジャンプ回数
         self.invincibility_timer = 0  # 無敵時間
+        self.standing_on = None
 
     def update(self, keys, map_rects, platforms):
         self.dx = 0
@@ -387,20 +386,12 @@ class MovingPlatform(pygame.sprite.Sprite):
                 self.rect.y = max(self.base_y - self.range, min(self.rect.y, self.base_y + self.range))
 
 pygame.init()
-audio_enabled = True
-try:
-    pg.mixer.init()
-except Exception:
-    audio_enabled = False
+pg.mixer.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Super Neko World")
 clock = pygame.time.Clock()
-font = pygame.font.SysFont("dejavusans", 32)
-if audio_enabled:
-    try:
-        pg.mixer.music.load("sound/BGM.mp3")  # BGMロード
-    except Exception:
-        audio_enabled = False
+font = pygame.font.Font("C:/Windows/Fonts/msgothic.ttc", 32)
+pg.mixer.music.load("sound/BGM.mp3")  # BGMロード
 
 game_state: str = "title"
 
@@ -443,10 +434,11 @@ def reset_game():
             elif v == 6:
                 image = Image.serihu(px, py)
                 all_sprites.add(image)
-            elif v == 7:  # スターの配置（無敵）
+            elif v == 8:  # スターの配置（無敵）
                 star = Star(px, py)
                 all_sprites.add(star)
                 star_group.add(star)
+            elif v == 7:
                 platform = MovingPlatform(px, py, vertical=True)
                 all_sprites.add(platform)
                 platforms.add(platform)
@@ -462,9 +454,9 @@ reset_game()
 # --- メインループ ---
 while True:
     keys = pygame.key.get_pressed()
-    if game_state == "playing" and audio_enabled and not pg.mixer.music.get_busy():
+    if game_state == "playing" and not pg.mixer.music.get_busy():
         pg.mixer.music.play(loops=-1)  # ゲーム中BGMをループ再生
-    elif game_state in ("gameover", "title", "clear") and audio_enabled and pg.mixer.music.get_busy():
+    elif game_state in ("gameover", "title", "clear") and pg.mixer.music.get_busy():
         pg.mixer.music.stop()  # ゲーム中以外の時BGMを停止
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -489,12 +481,8 @@ while True:
                 else:
                     player.max_jump = 1
                 if player.jump_count < player.max_jump:
-                    if audio_enabled:
-                        try:
-                            snd = pg.mixer.Sound("sound/jump.mp3")
-                            snd.play()  # ジャンプ時jump.mp3
-                        except Exception:
-                            audio_enabled = False
+                    snd = pg.mixer.Sound("sound/jump.mp3")
+                    snd.play()  # ジャンプ時jump.mp3
                     player.dy = JUMP_POWER
                     player.jump_count += 1
                     player.on_ground = False
