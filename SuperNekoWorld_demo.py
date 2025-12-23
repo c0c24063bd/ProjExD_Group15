@@ -446,6 +446,8 @@ def reset_game():
     player = Player(32, (len(MAP) - 3) * TILE_SIZE)
     all_sprites.add(player)
     fish_total = len(fish_group)
+    global score
+    score = 0
     start_time = pygame.time.get_ticks()
 
 reset_game()
@@ -505,13 +507,15 @@ while True:
             elif isinstance(enemy, Ghost): enemy.update(player)
 
         # 敵との衝突判定
-        for enemy in enemies.copy():
+        for enemy in enemies.copy():# score
             if player.rect.colliderect(enemy.rect):
                 # 犬を踏みつけたら消える
                 if player.invincibility_timer > 0:  # 0の場合敵を削除、そうでない場合は消せない（無敵）
                     enemies.remove(enemy)  # 無敵中なら敵を消す(無敵)
+                    score += 100  # 敵を倒したらスコア加算
                     all_sprites.remove(enemy)
                 else:
+                    score += 100  # 敵を倒したらスコア加算
                     if isinstance(enemy, Dog) and player.dy > 0 and player.rect.bottom - enemy.rect.top < TILE_SIZE // 2:
                         if player.dy > 0 and player.rect.bottom - enemy.rect.top < TILE_SIZE // 2:
                             enemies.remove(enemy); all_sprites.remove(enemy)
@@ -562,6 +566,8 @@ while True:
         timer_color = (255, 0, 0) if remaining_time <= 30 else (0, 0, 0)
         time_txt = font.render(f"残り時間: {remaining_time}", True, timer_color)
         screen.blit(time_txt, (SCREEN_WIDTH - 200, 10))
+        score_txt = font.render(f"スコア: {score}", True, (0,0,0)) # score表示
+        screen.blit(score_txt, (10, 40))
 
         if game_state == "gameover":
             txt = font.render("GAME OVER", True, (255,0,0))
